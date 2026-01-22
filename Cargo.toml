@@ -1,0 +1,36 @@
+[package]
+name = "btrfs-snapshotter"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+readme = "README.md"
+repository = "https://github.com/edward-scroop/btrfs-snapshotter"
+license = "GPL-3.0-or-later"
+
+[[bin]]
+name = "snapshotter"
+path = "src/main.rs"
+
+[profile.dev]
+opt-level = 2
+debug = "full"
+strip = "none"
+lto = "off"
+panic = "abort"
+incremental = true
+codegen-units = 256
+
+[profile.release]
+opt-level = 3
+debug = "full"
+split-debuginfo = "packed"
+strip = "none"
+lto = "thin"
+panic = "abort"
+incremental = false
+codegen-units = 16
+
+[dependencies]
+
+[lints.clippy]
+unwrap_used = "deny"
