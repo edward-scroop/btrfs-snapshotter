@@ -20,6 +20,9 @@ panic = "abort"
 incremental = true
 codegen-units = 256
 
+[profile.test]
+inherits = "dev"
+
 [profile.release]
 opt-level = 3
 debug = "full"
@@ -28,9 +31,13 @@ strip = "none"
 lto = "thin"
 panic = "abort"
 incremental = false
-codegen-units = 16
+codegen-units = 8
+
+[profile.bench]
+inherits = "release"
 
 [dependencies]
+jiff = "~0.2"
 
 [lints.clippy]
 unwrap_used = "deny"
