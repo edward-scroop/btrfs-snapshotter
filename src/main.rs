@@ -2,13 +2,16 @@
 // SPDX-FileCopyrightText: Copyright 2026 Edward Scroop <edward.scroop@gmail.com>
 
 use jiff::{RoundMode, ToSpan, Unit, Zoned, ZonedRound};
-use std::cmp::Ordering;
 use std::{
+    cmp::Ordering,
     io,
     path::{Path, PathBuf},
     process::Command,
     thread::sleep,
 };
+use tracing::info_span;
+
+mod init;
 
 struct Config {
     minutes: i8,
@@ -57,6 +60,9 @@ impl Snapshot {
 }
 
 fn main() {
+    // Guard must live for the life of the program to ensure logs are written to log file.
+    let _guard = init::init_logging();
+
     let config = Config {
         minutes: 0,
         subvolume_path: PathBuf::from("/"),
@@ -260,6 +266,10 @@ fn main() {
 }
 
 fn btrfs_snapshots(snapshot_dir: &Path) -> io::Result<Vec<PathBuf>> {
+    tracing::info!(
+        "Getting btrfs snapshots from snapshot dir: {}.",
+        snapshot_dir.to_string_lossy()
+    );
     let mut btrfs_snapshots = Vec::new();
 
     for entry in snapshot_dir.read_dir()? {
@@ -292,6 +302,11 @@ fn sleep_until(next_time: &Zoned) {
         .expect("Should never overflow span.")
         .unsigned_abs();
 
+    tracing::info!(
+        "Sleeping for {} seconds until {}.",
+        sleep_duration.as_secs_f64(),
+        next_time
+    );
     sleep(sleep_duration);
 }
 
@@ -302,6 +317,10 @@ fn create_btrfs_snapshot(
 ) -> Result<(), String> {
     let mut command = Command::new("btrfs");
     let mut args: Vec<&str> = Vec::new();
+    let span = info_span!("create_btrfs_snapshot");
+    let _span_guard = span.entered();
+
+    tracing::info!("Creating btrfs snapshot.");
 
     args.push("subvolume");
     args.push("snapshot");
@@ -321,6 +340,7 @@ fn create_btrfs_snapshot(
             .expect("Path should be valid utf8."),
     );
 
+    tracing::debug!("With args. {:?}", args);
     command.args(args);
 
     let output = match command.output() {
@@ -331,15 +351,23 @@ fn create_btrfs_snapshot(
     if output.status.success() {
         Ok(())
     } else {
-        Err(str::from_utf8(&output.stderr)
+        let stderr = str::from_utf8(&output.stderr)
             .expect("Stderr should be utf8.")
-            .to_string())
+            .to_string();
+
+        tracing::error!("Error running btrfs command. Output: {}", stderr);
+
+        Err(stderr)
     }
 }
 
 fn delete_btrfs_snapshot(snapshot_path: &Path) -> Result<(), String> {
     let mut command = Command::new("btrfs");
     let mut args: Vec<&str> = Vec::new();
+    let span = info_span!("delete_btrfs_snapshot");
+    let _span_guard = span.entered();
+
+    tracing::info!("Deleting btrfs snapshot.");
 
     args.push("subvolume");
     args.push("delete");
@@ -356,8 +384,12 @@ fn delete_btrfs_snapshot(snapshot_path: &Path) -> Result<(), String> {
     if output.status.success() {
         Ok(())
     } else {
-        Err(str::from_utf8(&output.stderr)
+        let stderr = str::from_utf8(&output.stderr)
             .expect("Stderr should be utf8.")
-            .to_string())
+            .to_string();
+
+        tracing::error!("Error running btrfs command. Output: {}", stderr);
+
+        Err(stderr)
     }
 }
