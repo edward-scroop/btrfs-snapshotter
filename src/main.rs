@@ -24,6 +24,21 @@ struct Config {
     monthly_limit: usize,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            minutes: 0,
+            subvolume_path: PathBuf::from("/"),
+            subvolume_name: "@rootfs".to_string(),
+            snapshot_path: PathBuf::from("/snapshots"),
+            hourly_limit: 48,
+            daily_limit: 7,
+            weekly_limit: 0,
+            monthly_limit: 0,
+        }
+    }
+}
+
 struct Snapshot {
     snapshot_path: PathBuf,
     time: Zoned,
@@ -60,19 +75,10 @@ impl Snapshot {
 }
 
 fn main() {
+    let config = init::load_config();
+
     // Guard must live for the life of the program to ensure logs are written to log file.
     let _guard = init::init_logging();
-
-    let config = Config {
-        minutes: 0,
-        subvolume_path: PathBuf::from("/"),
-        subvolume_name: String::from("@rootfs"),
-        snapshot_path: PathBuf::from("/snapshots"),
-        hourly_limit: 12,
-        daily_limit: 7,
-        weekly_limit: 2,
-        monthly_limit: 2,
-    };
     let start_time = Zoned::now()
         .round(
             ZonedRound::new()
@@ -102,7 +108,10 @@ fn main() {
     } else {
         first_snapshot_time
     };
+    tracing::info!("First snapshot time: {}.", &snapshot_time);
 
+    let _main_loop_span = tracing::info_span!("main_loop").entered();
+    tracing::info!("Beginning main loop.");
     loop {
         sleep_until(&snapshot_time);
 
@@ -247,11 +256,10 @@ fn main() {
                     }
 
                     for snapshot in matching_snapshots.iter() {
-                        if !snapshot.keep() {
-                            if let Err(e) = delete_btrfs_snapshot(snapshot.snapshot_path.as_path())
-                            {
-                                eprintln!("{}", e);
-                            }
+                        if !snapshot.keep()
+                            && let Err(e) = delete_btrfs_snapshot(snapshot.snapshot_path.as_path())
+                        {
+                            eprintln!("{}", e);
                         }
                     }
                 }
@@ -261,7 +269,8 @@ fn main() {
 
         snapshot_time = snapshot_time
             .checked_add(1.hour())
-            .expect("Time should never be near Zoned limit.")
+            .expect("Time should never be near Zoned limit.");
+        tracing::info!("Next snapshot time: {}.", &snapshot_time)
     }
 }
 

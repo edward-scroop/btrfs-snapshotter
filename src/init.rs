@@ -1,6 +1,7 @@
-use std::process::exit;
-
+use crate::Config;
 use jiff::Zoned;
+use serde::Deserialize;
+use std::{path::PathBuf, process::exit};
 use tracing_appender::{non_blocking::WorkerGuard, rolling::Rotation};
 use tracing_subscriber::{
     filter,
@@ -12,8 +13,20 @@ struct JiffLocal;
 
 impl FormatTime for JiffLocal {
     fn format_time(&self, w: &mut fmt::format::Writer<'_>) -> std::fmt::Result {
-        write!(w, "{}", Zoned::now().to_string())
+        write!(w, "{}", Zoned::now())
     }
+}
+
+#[derive(Deserialize)]
+struct TempConfig {
+    minutes: Option<i8>,
+    subvolume_path: Option<PathBuf>,
+    subvolume_name: Option<String>,
+    snapshot_path: Option<PathBuf>,
+    hourly_limit: Option<usize>,
+    daily_limit: Option<usize>,
+    weekly_limit: Option<usize>,
+    monthly_limit: Option<usize>,
 }
 
 pub fn init_logging() -> WorkerGuard {
@@ -25,10 +38,7 @@ pub fn init_logging() -> WorkerGuard {
     {
         Ok(x) => x,
         Err(e) => {
-            eprintln!(
-                "Error initialising logger. tracing message: {}",
-                e.to_string()
-            );
+            eprintln!("Error initialising logger. tracing message: {}", e);
             exit(1);
         }
     };
@@ -52,12 +62,59 @@ pub fn init_logging() -> WorkerGuard {
         .with(stdout_layer);
 
     if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
-        eprintln!(
-            "Error initialising logger. tracing message: {}",
-            e.to_string()
-        );
+        eprintln!("Error initialising logger. tracing message: {}", e);
         exit(1);
     };
 
     guard
+}
+
+pub fn load_config() -> Config {
+    let config_file_path = "/etc/btrfs-snapshotter/config.toml";
+    let config_file = match std::fs::read(config_file_path) {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!(
+                "Error loading config file: {} | Error: {}",
+                config_file_path, e
+            );
+            std::process::exit(1);
+        }
+    };
+
+    let temp_config: TempConfig = match toml::from_slice(config_file.as_slice()) {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let mut config = Config::default();
+    if let Some(x) = temp_config.minutes {
+        config.minutes = x;
+    }
+    if let Some(x) = temp_config.subvolume_path {
+        config.subvolume_path = x;
+    }
+    if let Some(x) = temp_config.subvolume_name {
+        config.subvolume_name = x;
+    }
+    if let Some(x) = temp_config.snapshot_path {
+        config.snapshot_path = x;
+    }
+    if let Some(x) = temp_config.hourly_limit {
+        config.hourly_limit = x;
+    }
+    if let Some(x) = temp_config.daily_limit {
+        config.daily_limit = x;
+    }
+    if let Some(x) = temp_config.weekly_limit {
+        config.weekly_limit = x;
+    }
+    if let Some(x) = temp_config.monthly_limit {
+        config.monthly_limit = x;
+    }
+
+    config
 }
