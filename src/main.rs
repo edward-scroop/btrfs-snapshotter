@@ -19,9 +19,6 @@ struct Config {
     subvolume_name: String,
     snapshot_path: PathBuf,
     hourly_limit: usize,
-    daily_limit: usize,
-    weekly_limit: usize,
-    monthly_limit: usize,
 }
 
 impl Default for Config {
@@ -32,9 +29,6 @@ impl Default for Config {
             subvolume_name: "@rootfs".to_string(),
             snapshot_path: PathBuf::from("/snapshots"),
             hourly_limit: 48,
-            daily_limit: 7,
-            weekly_limit: 0,
-            monthly_limit: 0,
         }
     }
 }
@@ -42,10 +36,7 @@ impl Default for Config {
 struct Snapshot {
     snapshot_path: PathBuf,
     time: Zoned,
-    keep_hourly: bool,
-    keep_daily: bool,
-    keep_weekly: bool,
-    keep_monthly: bool,
+    keep: bool,
 }
 
 impl Ord for Snapshot {
@@ -60,17 +51,10 @@ impl PartialOrd for Snapshot {
     }
 }
 
+impl Eq for Snapshot {}
 impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.time == other.time
-    }
-}
-
-impl Eq for Snapshot {}
-
-impl Snapshot {
-    fn keep(&self) -> bool {
-        self.keep_hourly || self.keep_daily || self.keep_weekly || self.keep_monthly
     }
 }
 
@@ -108,6 +92,7 @@ fn main() {
     } else {
         first_snapshot_time
     };
+    tracing::info!("Starting program at {}.", &start_time);
     tracing::info!("First snapshot time: {}.", &snapshot_time);
 
     let _main_loop_span = tracing::info_span!("main_loop").entered();
@@ -147,124 +132,29 @@ fn main() {
                             time: snapshot_dirname.replace("__", "/")[subvolume_name.len()..]
                                 .parse()
                                 .expect("Time string should be parsed by jiff."),
-                            keep_hourly: false,
-                            keep_daily: false,
-                            keep_weekly: false,
-                            keep_monthly: false,
+                            keep: false,
                         })
                     }
                 }
                 matching_snapshots.sort();
 
-                if matching_snapshots.len() >= config.hourly_limit {
-                    for i in 0..config.hourly_limit {
-                        if let Some(snapshot) = matching_snapshots.get_mut(i) {
-                            snapshot.keep_hourly = true;
-                        } else {
-                            break;
-                        }
+                for (i, snapshot) in matching_snapshots.iter_mut().rev().enumerate() {
+                    if i >= config.hourly_limit {
+                        break;
                     }
 
-                    let mut count = config.daily_limit;
-                    let mut time = snapshot_time
-                        .yesterday()
-                        .expect("Time should never be near Zoned min.");
+                    snapshot.keep = true;
+                }
 
-                    for snapshot in matching_snapshots.iter_mut() {
-                        if snapshot.time <= time {
-                            snapshot.keep_daily = true;
-
-                            if count == 1 {
-                                break;
-                            } else {
-                                count -= 1;
-                                time = time
-                                    .yesterday()
-                                    .expect("Time should never be near Zoned min.");
-                            }
-                        }
-                    }
-                    for snapshot in matching_snapshots.iter_mut().rev() {
-                        if count == 0 {
-                            break;
-                        }
-
-                        if !snapshot.keep_daily {
-                            snapshot.keep_daily = true;
-                            count -= 1;
-                        }
-                    }
-
-                    count = config.weekly_limit;
-                    time = snapshot_time
-                        .yesterday()
-                        .expect("Time should never be near Zoned min.");
-
-                    for snapshot in matching_snapshots.iter_mut() {
-                        if snapshot.time <= time {
-                            snapshot.keep_weekly = true;
-
-                            if count == 1 {
-                                break;
-                            } else {
-                                count -= 1;
-                                time = time
-                                    .yesterday()
-                                    .expect("Time should never be near Zoned min.");
-                            }
-                        }
-                    }
-                    for snapshot in matching_snapshots.iter_mut().rev() {
-                        if count == 0 {
-                            break;
-                        }
-
-                        if !snapshot.keep_weekly {
-                            snapshot.keep_weekly = true;
-                            count -= 1;
-                        }
-                    }
-
-                    count = config.monthly_limit;
-                    time = snapshot_time
-                        .yesterday()
-                        .expect("Time should never be Zoned min.");
-
-                    for snapshot in matching_snapshots.iter_mut() {
-                        if snapshot.time <= time {
-                            snapshot.keep_monthly = true;
-
-                            if count == 1 {
-                                break;
-                            } else {
-                                count -= 1;
-                                time = time
-                                    .yesterday()
-                                    .expect("Time should never be near Zoned min.");
-                            }
-                        }
-                    }
-                    for snapshot in matching_snapshots.iter_mut().rev() {
-                        if count == 0 {
-                            break;
-                        }
-
-                        if !snapshot.keep_monthly {
-                            snapshot.keep_monthly = true;
-                            count -= 1;
-                        }
-                    }
-
-                    for snapshot in matching_snapshots.iter() {
-                        if !snapshot.keep()
-                            && let Err(e) = delete_btrfs_snapshot(snapshot.snapshot_path.as_path())
-                        {
-                            eprintln!("{}", e);
-                        }
+                for snapshot in matching_snapshots.iter() {
+                    if !snapshot.keep
+                        && let Err(e) = delete_btrfs_snapshot(snapshot.snapshot_path.as_path())
+                    {
+                        tracing::error!("{}", e);
                     }
                 }
             }
-            Err(e) => eprintln!("{}", e),
+            Err(e) => tracing::error!("{}", e),
         }
 
         snapshot_time = snapshot_time

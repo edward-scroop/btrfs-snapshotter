@@ -24,9 +24,6 @@ struct TempConfig {
     subvolume_name: Option<String>,
     snapshot_path: Option<PathBuf>,
     hourly_limit: Option<usize>,
-    daily_limit: Option<usize>,
-    weekly_limit: Option<usize>,
-    monthly_limit: Option<usize>,
 }
 
 pub fn init_logging() -> WorkerGuard {
@@ -105,15 +102,6 @@ pub fn load_config() -> Config {
     }
     if let Some(x) = temp_config.hourly_limit {
         config.hourly_limit = x;
-    }
-    if let Some(x) = temp_config.daily_limit {
-        config.daily_limit = x;
-    }
-    if let Some(x) = temp_config.weekly_limit {
-        config.weekly_limit = x;
-    }
-    if let Some(x) = temp_config.monthly_limit {
-        config.monthly_limit = x;
     }
 
     config
