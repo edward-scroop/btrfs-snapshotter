@@ -2,10 +2,33 @@
 name = "btrfs-snapshotter"
 version = "0.1.0"
 edition = "2024"
+description = "A program to snapshot btrfs filesystems."
 rust-version = "1.91"
 publish = false
 repository = "https://github.com/edward-scroop/btrfs-snapshotter"
 license = "GPL-3.0-or-later"
+
+[package.metadata.deb]
+revision = "1"
+maintainer = "Edward Scroop <edward.scroop@gmail.com>"
+copyright = "2025-2026 Edward Scroop <edward.scroop@gmail.com>"
+separate-debug-symbols = true
+profile = "deb-release"
+assets = [
+    [
+        "target/release/snapshotter",
+        "/usr/bin/snapshotter",
+        "755",
+    ],
+    [
+        "pkg/common/config.toml",
+        "etc/btrfs-snapshotter/config.toml",
+        "644"
+    ],
+]
+maintainer-scripts = "pkg/debian/"
+systemd-units = { unit-name = "btrfs-snapshotter", unit-scripts = "pkg/common" }
+dbgsym = true
 
 [[bin]]
 name = "snapshotter"
@@ -32,6 +55,10 @@ lto = "thin"
 panic = "abort"
 incremental = false
 codegen-units = 8
+
+[profile.deb-release]
+inherits = "release"
+split-debuginfo = "off"
 
 [profile.bench]
 inherits = "release"

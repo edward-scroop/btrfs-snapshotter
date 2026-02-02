@@ -1,0 +1,19 @@
+# What minute of the hour to run the btrfs snapshot.
+# Defaults to on the hour.
+minutes = 0
+
+# The path of the subvolume you wish to snapshot is.
+# Defaults to the root path.
+subvolume_path = "/"
+
+# What you wish to name the snapshots.
+# Defaults to @rootfs
+subvolume_name = "@rootfs"
+
+# The path snapshots should be taken into.
+# Defaults to /snapshots
+snapshot_path = "/snapshots"
+
+# How many hourly snapshots you wish to take.
+# Defaults to 48 or 2 days worth.
+hourly_limit = 48

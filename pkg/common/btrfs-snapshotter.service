@@ -1,0 +1,12 @@
+[Unit]
+Description=A program to snapshot btrfs filesystems.
+
+[Service]
+ExecStart=/usr/bin/snapshotter
+Restart=on-failure
+RestartSec=30
+StartLimitInterval=5m
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

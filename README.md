@@ -1,6 +1,5 @@
 # Btrfs-Snapshotter
-This is a personal project to learn about hashing algorithms by implementing them in rust. I intend to model the
-behaviour of the GNU coreutils cksum program but as it is not a full rewrite i might not implement all behaviours.
+This a personal project to help me manage the snapshotting of my btrfs filesystems and to externally back them up.
 
 ## Getting Started
 This is an example of how you may give instructions on setting up your project locally.
