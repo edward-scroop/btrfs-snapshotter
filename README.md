@@ -1,15 +1,18 @@
 # Btrfs-Snapshotter
-This a personal project to help me manage the snapshotting of my btrfs filesystems and to externally back them up.
+This a personal project to help me manage the snapshotting of my btrfs filesystems and to externally back them up. It 
+only creates the snapshots and backups with no method of automatically restoring them, so you will have to manually
+restore it.
 
 ## Getting Started
-This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
 
 ### Prerequisites
-The only prerequisite is to be using an x86\_64 platform as it is the only platform i am currently targeting.
+Be using a recent debian platform and be x86\_64.
 
 ### Installation
-todo
+Download the latest release from github [link here.](https://github.com/edward-scroop/btrfs-snapshotter/releases)  
+  
+Then run apt-get install with the path to the deb package.
 
 ## Usage
 todo

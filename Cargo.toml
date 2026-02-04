@@ -11,7 +11,7 @@ license = "GPL-3.0-or-later"
 [package.metadata.deb]
 revision = "1"
 maintainer = "Edward Scroop <edward.scroop@gmail.com>"
-copyright = "2025-2026 Edward Scroop <edward.scroop@gmail.com>"
+copyright = "2026 Edward Scroop <edward.scroop@gmail.com>"
 separate-debug-symbols = true
 profile = "deb-release"
 assets = [
